@@ -49,7 +49,7 @@ module Linky
       # After NickServ notified my nickname has been ghosted,
       # change the nickname to my canonical one.
       def on_notice(fullactor, actor, target, text)
-        if actor == 'NickServ' && target == irc.me && /\bghosted\b/ =~ text
+        if actor && actor.downcase == 'nickserv' && target == irc.me && /\bghosted\b/ =~ text
           irc.nick @options[:nickname]
         end
       end
@@ -61,8 +61,8 @@ module Linky
         end
         @nickmutex.synchronize do
           @nicklist.each do |target, nicklist|
-            if nicklist.delete?(actor)
-              nicklist.add(nickname)
+            if nicklist.delete?(actor.downcase)
+              nicklist.add(nickname.downcase)
             end
           end
         end
@@ -71,9 +71,9 @@ module Linky
       # Update member list.
       def on_namreply(text, args)
         flag, target, *members = text.split
-        nicklist = members.collect { |name| name.sub(/^\W*/, '') }
+        nicklist = members.collect { |name| name.sub(/^\W*/, '').downcase }
         @nickmutex.synchronize do
-          @nicklist[target] |= nicklist
+          @nicklist[target.downcase] |= nicklist
         end
       end
       
@@ -81,14 +81,14 @@ module Linky
       def on_endofnames(text, args)
         target, = text.split
         @nickmutex.synchronize do
-          membercheck(target)
+          membercheck(target.downcase)
         end
       end
       
       # Update member list.
       def on_join(fullactor, actor, target)
         @nickmutex.synchronize do
-          @nicklist[target].add(actor)
+          @nicklist[target.downcase].add(actor.downcase)
         end
       end
       
@@ -97,11 +97,11 @@ module Linky
       def on_part(fullactor, actor, target, text)
         @nickmutex.synchronize do
           if actor == irc.me
-            @nicklist.delete(target)
-            killwait(target)
+            @nicklist.delete(target.downcase)
+            killwait(target.downcase)
           else
-            @nicklist[target].delete(actor)
-            membercheck(target)
+            @nicklist[target].delete(actor.downcase)
+            membercheck(target.downcase)
           end
         end
       end
@@ -111,8 +111,8 @@ module Linky
         unless actor == irc.me
           @nickmutex.synchronize do
             @nicklist.each do |target, nicklist|
-              nicklist.delete(actor)
-              membercheck(target)
+              nicklist.delete(actor.downcase)
+              membercheck(target.downcase)
             end
           end
         end
