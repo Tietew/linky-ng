@@ -10,3 +10,7 @@ default_wiki:
 default_lang:
   value: text
   usage: "SET DEFAULT_LANG <lang>"
+
+nowiki:
+  value: boolean
+  usage: "SET NOWIKI <on / off>"

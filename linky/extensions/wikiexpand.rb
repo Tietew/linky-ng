@@ -213,6 +213,7 @@ module Linky
       def on_msg(fullactor, actor, target, text)
         return unless /\[\[/ =~ text
         target = actor if target == @irc.me
+        return if @config.channel[target, 'nowiki'] == '1'
         
         wiki = @config.channel[target, 'default_wiki'] || 'w'
         lang = @config.channel[target, 'default_lang'] || 'en'
