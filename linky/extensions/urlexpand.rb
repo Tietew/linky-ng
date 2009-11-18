@@ -45,7 +45,7 @@ module Linky
         dupe = {}
         target = actor if target == @irc.me
         
-        text.scan(%r{h?ttp?://(.*?)/(\S+)}) do |host, path|
+        text.scan(%r{h?ttp?://(.*?)/([\w+\/\-\.\:]+)}) do |host, path|
           host.downcase!
           key = "#{host}/#{path}"
           unless dupe[key]
