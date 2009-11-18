@@ -1,0 +1,12 @@
+--- 
+persist:
+  value: boolean
+  usage: "SET PERSIST <on / off>"
+
+default_wiki:
+  value: text
+  usage: "SET DEFAULT_WIKI <wiki>"
+
+default_lang:
+  value: text
+  usage: "SET DEFAULT_LANG <lang>"

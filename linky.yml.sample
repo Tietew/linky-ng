@@ -1,0 +1,6 @@
+--- 
+:loud:        false
+:irc_network: chat.freenode.net
+:database:    "linky.sqlite"
+:nickname:    NICKNAME_HERE
+:nickpass:    NICKSERV_PASSWORD_HERE
