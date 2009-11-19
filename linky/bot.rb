@@ -101,8 +101,13 @@ module Linky
     
     public
     
-    def command_version(actor, target, *params)
+    def command_version(actor, target, args)
       msg target, bot_version
+    end
+    
+    def command_bye(actor, target, args)
+      @irc.notice target, "Bye!"
+      Thread.new { sleep 1; @irc.quit "Bye-bye"; sleep 1; exit }
     end
   end
 end
