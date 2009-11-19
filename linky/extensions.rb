@@ -1,6 +1,5 @@
 # -*- coding: UTF-8 -*-
 #
-require 'active_support/ordered_hash'
 
 module Linky
   module Extensions

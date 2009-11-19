@@ -4,6 +4,7 @@
 require 'optparse'
 require 'rubygems'
 require 'net/yail/IRCBot'
+require 'active_support'
 require 'sqlite3'
 require 'thread'
 require 'yaml'

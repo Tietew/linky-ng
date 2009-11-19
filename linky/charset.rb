@@ -60,10 +60,11 @@ module Linky
       
       def out_text(target, text)
         convert(text, charset(target), 'UTF-8')
+        text.force_encoding(Encoding::ASCII_8BIT) if defined? Encoding
       end
       
       def convert(text, to, from)
-        text.replace(Utils.safe_iconv(to, from, text)) if to != from
+        text.replace(Utils.safe_iconv(to, from, text))
       end
     end
   end

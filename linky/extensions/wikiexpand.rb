@@ -47,7 +47,7 @@ module Linky
              :usage => [ 'SET SHORTCUT <wiki / wiki:lang / lang / *> <prefix> [namespace]',
                          'UNSET SHORTCUT <wiki / wiki:lang / lang / *> <prefix>' ]
       
-      IW_OPTIONS = %w(charset space)
+      IW_OPTIONS = %w(capitalize charset space)
       
       def initialize(bot)
         super
@@ -82,10 +82,16 @@ module Linky
               return
             end
             unless optvalue.empty?
-              case optname.downcase
+              case optname
               when 'charset'
                 unless ((Iconv.conv(optvalue, 'UTF-8', 'Unicode') rescue false))
                   @irc.msg target, "ERROR: Unknown charset #{optvalue}"
+                  return
+                end
+              when 'capitalize'
+                optvalue.downcase!
+                unless optvalue == 'ascii' || optvalue == 'unicode'
+                  @irc.msg target, "ERROR: Unknown capitalize option; valids are `ASCII' or `Unicode'."
                   return
                 end
               end
@@ -193,9 +199,25 @@ module Linky
         title.strip!
         
         url ||= @config.interwiki[wiki] || @config.interwiki[wiki = 'w']
+        
+        # capitalize
+        if capitalize = @config.interwiki_options[wiki, 'capitalize']
+          titles = title.split(':', 2)
+          case capitalize
+          when 'ascii'
+            titles.collect! { |t| t.sub(/^./u) { $&.upcase } }
+          when 'unicode'
+            titles.collect! { |t| t.sub(/^./u) { $&.mb_chars.upcase.to_s } }
+          end
+          title = titles.join(':')
+        end
+        
+        # charset
         if charset = @config.interwiki_options[wiki, 'charset']
           title = Utils.safe_iconv(charset, 'UTF-8', title)
         end
+        
+        # space
         if space = @config.interwiki_options[wiki, 'space']
           title = Utils.escape(title).gsub(/%20/, space)
         else
@@ -204,6 +226,8 @@ module Linky
           fragment.tr!(' ', '_') if fragment
           title = Utils.escape(title)
         end
+        
+        # make url
         url.gsub!(/\{lang\}/, lang)
         url.gsub!(/\{title\}/, title)
         url << '#' << Utils.escape(fragment, '.') if fragment
