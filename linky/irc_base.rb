@@ -38,6 +38,7 @@ module Linky
         @nickmutex.synchronize do
           @nicklist.clear
           @nickthread.each(&:kill)
+          @nickthread.clear
         end
         if @options[:nickpass] && irc.me != @options[:nickname]
           irc.msg "NickServ", "ghost #{@options[:nickname]} #{@options[:nickpass]}"
@@ -100,7 +101,7 @@ module Linky
             @nicklist.delete(target.downcase)
             killwait(target.downcase)
           else
-            @nicklist[target].delete(actor.downcase)
+            @nicklist[target.downcase].delete(actor.downcase)
             membercheck(target.downcase)
           end
         end
@@ -112,7 +113,7 @@ module Linky
           @nickmutex.synchronize do
             @nicklist.each do |target, nicklist|
               nicklist.delete(actor.downcase)
-              membercheck(target.downcase)
+              membercheck(target)
             end
           end
         end
@@ -142,7 +143,7 @@ module Linky
       end
       
       def killwait(target)
-        if thread = @nickthread[target]
+        if thread = @nickthread.delete(target)
           thread.kill
         end
       end
