@@ -1,6 +1,7 @@
 # -*- coding: UTF-8 -*-
 #
 require 'linky/config'
+require 'linky/cache'
 require 'linky/utils'
 require 'linky/extensions'
 Dir["linky/extensions/*.rb"].each { |f| require f }
@@ -12,12 +13,13 @@ require 'linky/irc_base'
 module Linky
   class Bot < IRCBot
     include Extensions::Wrapper
-    attr_reader :irc, :config, :options, :extensions, :commands
+    attr_reader :irc, :config, :cache, :options, :extensions, :commands
     
     def initialize(options)
       @options = options.dup
       
       @config = Config.new(@options[:database])
+      @cache = Cache.new(@options[:cache])
       nickname = @options[:nickname]
       
       @options[:username] ||= BOTNAME

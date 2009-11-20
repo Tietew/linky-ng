@@ -21,6 +21,7 @@ module Linky
       def initialize(bot)
         super
         @config = @bot.config
+        @cache = @bot.cache
       end
       
       def add_handlers
@@ -59,7 +60,7 @@ module Linky
       
       def expand(target, host, path)
         key = "#{host}/#{path}"
-        url = @config.cache(:urlexpand, key) do
+        url = @cache.fetch(:urlexpand, key) do
           resp = Net::HTTP.start(host) { |http| http.request_get("/#{path}") }
           resp.code == '301' || resp.code == '302' ? resp['Location'] : 'Not Found'
         end

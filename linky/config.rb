@@ -31,12 +31,6 @@ module Linky
         value   TEXT         NOT NULL,
         PRIMARY KEY (channel, name)
       );
-      CREATE TABLE IF NOT EXISTS cache (
-        key     VARCHAR(255) NOT NULL PRIMARY KEY,
-        value   TEXT         NOT NULL,
-        expiry  INTEGER      NOT NULL
-      );
-      CREATE INDEX IF NOT EXISTS cache_expiry_index ON cache (expiry);
     END_SQL
     add_config_proxy(:channel, [ :channel, :name ], :value)
     
@@ -90,18 +84,6 @@ module Linky
     def persist_channels
       @db.query("SELECT channel FROM channel WHERE name = 'persist' AND value = '1'").
         collect { |channel,| channel }
-    end
-    
-    def cache(namespace, key, max_age = 86400 * 7, &block)
-      now = Time.now
-      @db.execute("DELETE FROM cache WHERE expiry < ?", now.to_i)
-      key = "#{namespace}:#{key}"
-      unless value = @db.get_first_value("SELECT value FROM cache WHERE key = ?", key)
-        if value = yield(key)
-          @db.execute("INSERT OR REPLACE INTO cache VALUES ( ?, ?, ? )", key, value, (now + max_age).to_i)
-        end
-      end
-      value
     end
   end
 end

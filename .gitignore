@@ -1,4 +1,4 @@
-linky.log
+*.log
+*.sqlite
 linky.yml
-linky.sqlite
 run
