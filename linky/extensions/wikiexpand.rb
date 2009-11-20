@@ -186,7 +186,7 @@ module Linky
           
           ns.downcase!
           if interlang = @config.interlang[ns]
-            lang = ns
+            lang = interlang
           elsif url = @config.interwiki[ns]
             lang = "en" if wiki == ns
             wiki = ns
