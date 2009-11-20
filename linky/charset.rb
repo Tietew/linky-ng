@@ -17,6 +17,7 @@ module Linky
       end
       
       def add_handlers
+        irc.prepend_handler :incoming_msg,       wrap_method(:on_msg)
         irc.prepend_handler :incoming_msg,       wrap_method(:in_text)
         irc.prepend_handler :incoming_act,       wrap_method(:in_text)
         irc.prepend_handler :incoming_ctcp,      wrap_method(:in_text)
@@ -52,6 +53,12 @@ module Linky
       
       def charset(target)
         @charsets[target] ||= @config.channel[target, 'charset'] || 'UTF-8'
+      end
+      
+      def on_msg(fullactor, actor, target, text)
+        if /^\#/ =~ target && charset(target) == 'UTF-8' && /\x1B\$B/ =~ text
+          @irc.msg target, "\0303UTF8-ize\x03 <\x0312#{actor}\x03> #{NKF.nkf('-Jwx -m0 --ms-ucs-map', text)}"
+        end
       end
       
       def in_text(fullactor, actor, target, text)
