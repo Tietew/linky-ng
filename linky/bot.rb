@@ -4,10 +4,6 @@ require 'linky/config'
 require 'linky/cache'
 require 'linky/utils'
 require 'linky/extensions'
-Dir["linky/extensions/*.rb"].each { |f| require f }
-
-require 'linky/command'
-require 'linky/charset'
 require 'linky/irc_base'
 
 module Linky
@@ -21,6 +17,17 @@ module Linky
       @config = Config.new(@options[:database])
       @cache = Cache.new(@options[:cache])
       nickname = @options[:nickname]
+      
+      extensions = Array(@options[:extensions] || '*').flatten
+      Dir["linky/extensions/*.rb"].each do |f|
+        klassname = File.basename(f).camelize
+        extensions.each do |matcher|
+          if File.fnmatch(matcher, klassname)
+            require f.sub(/\.rb$/, '')
+            break
+          end
+        end
+      end
       
       @options[:username] ||= BOTNAME
       @options[:realname] ||= BOTNAME

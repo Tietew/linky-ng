@@ -1,10 +1,13 @@
 # -*- coding: UTF-8 -*-
 #
+require 'linky/settings'
 require 'net/http'
 
 module Linky
   module Extensions
-    class URLExpand < Base
+    class UrlExpand < Base
+      self.postpend = %w(Command WikiExpand)
+      
       config_table <<-END_SQL
         CREATE TABLE IF NOT EXISTS urlexpand (
           host VARCHAR(64)  NOT NULL PRIMARY KEY,

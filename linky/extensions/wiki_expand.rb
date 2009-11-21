@@ -1,9 +1,12 @@
 # -*- coding: UTF-8 -*-
 #
+require 'linky/settings'
 
 module Linky
   module Extensions
     class WikiExpand < Base
+      self.postpend = %w(Command)
+      
       config_table <<-END_SQL
         CREATE TABLE IF NOT EXISTS interwiki (
           prefix    VARCHAR(64)  NOT NULL PRIMARY KEY,

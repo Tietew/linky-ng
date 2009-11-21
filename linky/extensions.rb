@@ -58,15 +58,45 @@ module Linky
       extend ClassMethods
       attr_reader :bot, :irc, :options
       
-      @@extensions = []
+      PRIO_REALLY_FIRST = 1
+      PRIO_FIRST = 2
+      PRIO_NORMAL = 3
+      PRIO_LAST = 4
+      PRIO_REALLY_LAST = 5
+      class_inheritable_accessor :priority
+      class_inheritable_array :prepend, :postpend
+      self.priority = PRIO_NORMAL
+      self.prepend = []
+      self.postpend = []
       
+      @@extensions = []
       def self.inherited(klass)
-        @@extensions << klass
         super
+        @@extensions << klass
       end
       
       def self.create_extensions(bot)
-        @@extensions.inject(ActiveSupport::OrderedHash.new) { |hash, klass| hash[klass] = klass.new(bot); hash }
+        extprio = {}
+        @@extensions.each do |klass|
+          klassname = klass.name.demodulize
+          ary = (extprio[klass.priority] ||= [])
+          i = 0
+          while i < ary.length
+            elt = ary[i]
+            eltname = elt.name.demodulize
+            unless elt.prepend.include?(klassname) || klass.postpend.include?(eltname)
+              break if elt.postpend.include?(klassname) || klass.prepend.include?(eltname)
+            end
+            i += 1
+          end
+          ary.insert(i, klass)
+        end
+        
+        extensions = extprio.sort.collect { |prio, klasses| klasses }.flatten.reverse
+        extensions.inject(ActiveSupport::OrderedHash.new) { |hash, klass|
+          $stderr.puts "Registered Extension: #{klass.name.demodulize}"
+          hash[klass] = klass.new(bot); hash
+        }
       end
       
       def initialize(bot)

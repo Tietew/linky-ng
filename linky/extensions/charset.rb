@@ -1,11 +1,15 @@
 # -*- coding: UTF-8 -*-
 #
+require 'linky/settings'
 require 'set'
 require 'thread'
 
 module Linky
   module Extensions
     class Charset < Base
+      self.priority = PRIO_REALLY_FIRST
+      self.postpend = %w(IRCBase)
+      
       config :charset,
              :args => [ :opt, String ],
              :usage => [ 'SET CHARSET <charset>', 'UNSET CHARSET' ]

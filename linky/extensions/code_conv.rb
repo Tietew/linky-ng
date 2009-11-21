@@ -1,5 +1,6 @@
 # -*- coding: UTF-8 -*-
 #
+require 'linky/command'
 
 module Linky
   module Extensions

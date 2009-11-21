@@ -5,6 +5,8 @@ require 'set'
 module Linky
   module Extensions
     class IRCBase < Base
+      self.priority = PRIO_REALLY_FIRST
+      
       attr_reader :nicklist
       
       EMPTY_CHANNEL_WAIT_SECS = 60
