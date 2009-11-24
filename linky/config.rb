@@ -83,9 +83,12 @@ module Linky
       end
     end
     
+    def channels(name, value)
+      @db.query("SELECT channel FROM channel WHERE name = ? AND value = ?", name, value).collect { |ch,| ch }
+    end
+    
     def persist_channels
-      @db.query("SELECT channel FROM channel WHERE name = 'persist' AND value = '1'").
-        collect { |channel,| channel }
+      channels('persist', 1)
     end
   end
 end

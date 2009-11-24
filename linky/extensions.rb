@@ -107,6 +107,10 @@ module Linky
       def add_handlers
         # placeholder
       end
+      
+      def shutdown
+        # placeholder
+      end
     end
   end
 end

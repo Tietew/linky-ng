@@ -1,6 +1,8 @@
 #!/usr/bin/ruby -Ku
 # -*- coding: UTF-8 -*-
 #
+GC.enable_stats if defined? GC.enable_stats
+
 require 'optparse'
 require 'rubygems'
 require 'net/yail/IRCBot'

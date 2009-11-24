@@ -13,6 +13,8 @@ module Linky
     
     def initialize(options)
       @options = options.dup
+      @extensions = @extthreads = nil
+      @mutex = Mutex.new
       
       extensions = Array(@options[:extensions] || '*').flatten
       Dir["linky/extensions/**/*.rb"].each do |f|
@@ -42,6 +44,22 @@ module Linky
     
     def channel_locked?(channel)
       @config.channel[channel, 'persist'] == '1'
+    end
+    
+    def connect_socket
+      @mutex.synchronize do
+        @extensions.each(&:shutdown) if @extensions
+        @extensions = nil
+        @extthreads.each(&:kill) if @extthreads
+        @extthreads = nil
+      end
+      super
+    end
+    
+    def register_thread(*args, &block)
+      @mutex.synchronize do
+        (@extthreads ||= []) << Thread.new(*args, &block)
+      end
     end
     
     private

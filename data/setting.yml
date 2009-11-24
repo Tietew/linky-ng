@@ -14,3 +14,7 @@ default_lang:
 nowiki:
   value: boolean
   usage: "SET NOWIKI <on / off>"
+
+statusreport:
+  value: boolean
+  usage: "SET STATUSREPORT <on / off>"
