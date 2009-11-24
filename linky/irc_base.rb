@@ -62,10 +62,13 @@ module Linky
         if irc.me == nickname
           irc.msg "NickServ", "identify #{@options[:nickpass]}"
         end
+        
+        actor = actor.downcase
+        nickname = nickname.downcase
         @nickmutex.synchronize do
           @nicklist.each do |target, nicklist|
-            if nicklist.delete?(actor.downcase)
-              nicklist.add(nickname.downcase)
+            if nicklist.delete?(actor)
+              nicklist.add(nickname)
             end
           end
         end
@@ -90,21 +93,24 @@ module Linky
       
       # Update member list.
       def on_join(fullactor, actor, target)
+        target = target.downcase
         @nickmutex.synchronize do
-          @nicklist[target.downcase].add(actor.downcase)
+          @nicklist[target].add(actor.downcase)
+          membercheck(target)
         end
       end
       
       # If I had parted, delete member list.
       # Otherwise, update member list and check for empty channel.
       def on_part(fullactor, actor, target, text)
+        target = target.downcase
         @nickmutex.synchronize do
           if actor == irc.me
-            @nicklist.delete(target.downcase)
-            killwait(target.downcase)
+            @nicklist.delete(target)
+            killwait(target)
           else
-            @nicklist[target.downcase].delete(actor.downcase)
-            membercheck(target.downcase)
+            @nicklist[target].delete(actor.downcase)
+            membercheck(target)
           end
         end
       end
@@ -112,9 +118,10 @@ module Linky
       # Update member lists of all channels and check for empty channels.
       def on_quit(fullactor, actor, text)
         unless actor == irc.me
+          actor = actor.downcase
           @nickmutex.synchronize do
             @nicklist.each do |target, nicklist|
-              nicklist.delete(actor.downcase)
+              nicklist.delete(actor)
               membercheck(target)
             end
           end
