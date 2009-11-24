@@ -17,7 +17,6 @@ module Linky
       def initialize(bot)
         super
         @charsets = {}
-        @config = bot.config
       end
       
       def add_handlers
@@ -39,29 +38,29 @@ module Linky
         else
           charset.upcase!
           if Iconv.conv(charset, 'UTF-8', 'Unicode') == 'Unicode'
-            @config.channel[target, 'charset'] = charset.upcase
+            config.channel[target, 'charset'] = charset.upcase
             @charsets[target] = charset
           else
-            @irc.msg target, "ERROR: \x02#{charset}\x02 is not compatible with ASCII."
+            irc.msg target, "ERROR: \x02#{charset}\x02 is not compatible with ASCII."
             return
           end
         end
-        @irc.msg target, "SET CHARSET = #{charset}"
+        irc.msg target, "SET CHARSET = #{charset}"
       end
       
       def unset_charset(target)
-        @config.channel.delete(target, 'charset')
+        config.channel.delete(target, 'charset')
         @charsets.delete(target)
-        @irc.msg target, "UNSET CHARSET"
+        irc.msg target, "UNSET CHARSET"
       end
       
       def charset(target)
-        @charsets[target] ||= @config.channel[target, 'charset'] || 'UTF-8'
+        @charsets[target] ||= config.channel[target, 'charset'] || 'UTF-8'
       end
       
       def on_msg(fullactor, actor, target, text)
         if /^\#/ =~ target && charset(target) == 'UTF-8' && /\x1B\$B/ =~ text
-          @irc.msg target, "\0303UTF8-ize\x03 <\x0312#{actor}\x03> #{NKF.nkf('-Jwx -m0 --ms-ucs-map', text)}"
+          irc.msg target, "\0303UTF8-ize\x03 <\x0312#{actor}\x03> #{NKF.nkf('-Jwx -m0 --ms-ucs-map', text)}"
         end
       end
       

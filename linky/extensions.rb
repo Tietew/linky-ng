@@ -56,7 +56,8 @@ module Linky
     class Base
       include Wrapper
       extend ClassMethods
-      attr_reader :bot, :irc, :options
+      attr_reader :bot
+      delegate :irc, :options, :config, :cache, :to => :@bot
       
       PRIO_REALLY_FIRST = 1
       PRIO_FIRST = 2
@@ -101,8 +102,6 @@ module Linky
       
       def initialize(bot)
         @bot = bot
-        @irc = @bot.irc
-        @options = @bot.options
       end
       
       def add_handlers

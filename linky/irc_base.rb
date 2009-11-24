@@ -42,10 +42,10 @@ module Linky
           @nickthread.each(&:kill)
           @nickthread.clear
         end
-        if @options[:nickpass] && irc.me != @options[:nickname]
-          irc.msg "NickServ", "ghost #{@options[:nickname]} #{@options[:nickpass]}"
+        if options[:nickpass] && irc.me != options[:nickname]
+          irc.msg "NickServ", "ghost #{options[:nickname]} #{options[:nickpass]}"
         else
-          irc.msg "NickServ", "identify #{@options[:nickpass]}"
+          irc.msg "NickServ", "identify #{options[:nickpass]}"
         end
       end
       
@@ -53,14 +53,14 @@ module Linky
       # change the nickname to my canonical one.
       def on_notice(fullactor, actor, target, text)
         if actor && actor.downcase == 'nickserv' && target == irc.me && /\bghosted\b/ =~ text
-          irc.nick @options[:nickname]
+          irc.nick options[:nickname]
         end
       end
       
       # After my nickname has been changed to my canonical one, identify me.
       def on_nick(fullactor, actor, nickname)
         if irc.me == nickname
-          irc.msg "NickServ", "identify #{@options[:nickpass]}"
+          irc.msg "NickServ", "identify #{options[:nickpass]}"
         end
         
         actor = actor.downcase
@@ -139,7 +139,7 @@ module Linky
           nicklist = @nicklist[target]
           irc.report "{#{target}} members = #{nicklist.sort.join(' ')}"
           return if nicklist.size >= 2 && nicklist.include?(irc.me)
-          return if @bot.channel_locked?(target)
+          return if bot.channel_locked?(target)
         end
         @nickthread[target] = Thread.new(target, &method(:wait_empty))
       end
@@ -161,7 +161,7 @@ module Linky
       def on_ctcp(fullactor, actor, target, text)
         case text
         when 'VERSION'
-          irc.ctcpreply(actor, "VERSION #{@bot.bot_version}")
+          irc.ctcpreply(actor, "VERSION #{bot.bot_version}")
         when 'TIME'
           irc.ctcpreply(actor, "TIME #{Time.now.asctime}")
         when 'CLIENTINFO'

@@ -52,11 +52,6 @@ module Linky
       
       IW_OPTIONS = %w(capitalize charset space)
       
-      def initialize(bot)
-        super
-        @config = @bot.config
-      end
-      
       def add_handlers
         irc.prepend_handler :incoming_msg, wrap_method(:on_msg)
       end
@@ -75,26 +70,26 @@ module Linky
           args.each do |opt|
             optname, optvalue = opt.split('=', 2)
             unless optname && optvalue
-              @irc.msg target, "ERROR: Invalid arguments for SET INTERWIKI"
+              irc.msg target, "ERROR: Invalid arguments for SET INTERWIKI"
               return
             end
             
             optname.downcase!
             unless IW_OPTIONS.include?(optname)
-              @irc.msg target, "ERROR: Unknown interwiki options #{optname}"
+              irc.msg target, "ERROR: Unknown interwiki options #{optname}"
               return
             end
             unless optvalue.empty?
               case optname
               when 'charset'
                 unless ((Iconv.conv(optvalue, 'UTF-8', 'Unicode') rescue false))
-                  @irc.msg target, "ERROR: Unknown charset #{optvalue}"
+                  irc.msg target, "ERROR: Unknown charset #{optvalue}"
                   return
                 end
               when 'capitalize'
                 optvalue.downcase!
                 unless optvalue == 'ascii' || optvalue == 'unicode'
-                  @irc.msg target, "ERROR: Unknown capitalize option; valids are `ASCII' or `Unicode'."
+                  irc.msg target, "ERROR: Unknown capitalize option; valids are `ASCII' or `Unicode'."
                   return
                 end
               end
@@ -103,72 +98,72 @@ module Linky
           end
           
           if url
-            @config.interwiki[wiki] = url
+            config.interwiki[wiki] = url
           else
-            url = @config.interwiki[wiki]
+            url = config.interwiki[wiki]
           end
           unless options.empty?
             unless url
-              @irc.msg target, "ERROR: Interwiki #{wiki} is not defined."
+              irc.msg target, "ERROR: Interwiki #{wiki} is not defined."
               return
             end
             options.each do |optname, optvalue|
               if optvalue.empty?
-                @config.interwiki_options.delete(wiki, optname)
+                config.interwiki_options.delete(wiki, optname)
               else
-                @config.interwiki_options[wiki, optname] = optvalue
+                config.interwiki_options[wiki, optname] = optvalue
               end
             end
           end
         end
-        if url ||= @config.interwiki[wiki]
+        if url ||= config.interwiki[wiki]
           mesg = url.inspect
           IW_OPTIONS.each do |optname|
-            if optvalue = @config.interwiki_options[wiki, optname]
+            if optvalue = config.interwiki_options[wiki, optname]
               mesg << " #{optname}=#{optvalue.inspect}"
             end
           end
-          @irc.msg target, "SET INTERWIKI #{wiki} = #{mesg}"
+          irc.msg target, "SET INTERWIKI #{wiki} = #{mesg}"
         else
-          @irc.msg target, "UNSET INTERWIKI #{wiki}"
+          irc.msg target, "UNSET INTERWIKI #{wiki}"
         end
       end
       
       def unset_interwiki(target, wiki)
         wiki.downcase!
-        @config.interwiki.delete(wiki)
+        config.interwiki.delete(wiki)
         IW_OPTIONS.each do |optname|
-          @config.interwiki_options.delete(wiki, optname)
+          config.interwiki_options.delete(wiki, optname)
         end
-        @irc.msg target, "UNSET INTERWIKI #{wiki}"
+        irc.msg target, "UNSET INTERWIKI #{wiki}"
       end
       
       def set_interlang(target, lang)
         lang.downcase!
-        @config.interlang[lang] = lang
-        @irc.msg target, "SET #{name} #{lang}"
+        config.interlang[lang] = lang
+        irc.msg target, "SET #{name} #{lang}"
       end
       
       def unset_interlang(target, lang)
         lang.downcase!
-        @config.interlang.delete(lang)
-        @irc.msg target, "UNSET #{name} #{lang}"
+        config.interlang.delete(lang)
+        irc.msg target, "UNSET #{name} #{lang}"
       end
       
       def set_shortcut(target, wiki, prefix, namespace = nil)
         wiki.downcase!
         if namespace
-          @config.shortcut[wiki, prefix] = namespace
+          config.shortcut[wiki, prefix] = namespace
         else
-          namespace = @config.shortcut[wiki, prefix]
+          namespace = config.shortcut[wiki, prefix]
         end
-        @irc.msg target, "SET SHORTCUT #{wiki} #{prefix} = #{namespace}"
+        irc.msg target, "SET SHORTCUT #{wiki} #{prefix} = #{namespace}"
       end
       
       def unset_shortcut(target, wiki, prefix)
         wiki.downcase!
-        @config.shortcut.delete(wiki, prefix)
-        @irc.msg target, "UNSET SHORTCUT #{wiki} #{prefix}"
+        config.shortcut.delete(wiki, prefix)
+        irc.msg target, "UNSET SHORTCUT #{wiki} #{prefix}"
       end
       
       def expand(title, wiki, lang)
@@ -181,16 +176,16 @@ module Linky
         while /^([^:]+):/ =~ title
           ns, nname = $1, $' #'
           found = nil
-          [ "#{wiki}:#{lang}", lang, wiki, '*' ].each { |key| break if found = @config.shortcut[key, ns] }
+          [ "#{wiki}:#{lang}", lang, wiki, '*' ].each { |key| break if found = config.shortcut[key, ns] }
           if found
             title = "#{found}:#{nname}"
             break
           end
           
           ns.downcase!
-          if interlang = @config.interlang[ns]
+          if interlang = config.interlang[ns]
             lang = interlang
-          elsif url = @config.interwiki[ns]
+          elsif url = config.interwiki[ns]
             lang = "en" if wiki == ns
             wiki = ns
           else
@@ -201,10 +196,10 @@ module Linky
         title.sub!(/^:+/, '')
         title.strip!
         
-        url ||= @config.interwiki[wiki] || @config.interwiki[wiki = 'w']
+        url ||= config.interwiki[wiki] || config.interwiki[wiki = 'w']
         
         # capitalize
-        if capitalize = @config.interwiki_options[wiki, 'capitalize']
+        if capitalize = config.interwiki_options[wiki, 'capitalize']
           titles = title.split(':', 2)
           case capitalize
           when 'ascii'
@@ -216,12 +211,12 @@ module Linky
         end
         
         # charset
-        if charset = @config.interwiki_options[wiki, 'charset']
+        if charset = config.interwiki_options[wiki, 'charset']
           title = Utils.safe_iconv(charset, 'UTF-8', title)
         end
         
         # space
-        if space = @config.interwiki_options[wiki, 'space']
+        if space = config.interwiki_options[wiki, 'space']
           title = Utils.escape(title).gsub(/%20/, space)
         else
           title.gsub!(/\A_+|_+\z/, '')
@@ -239,15 +234,15 @@ module Linky
       
       def on_msg(fullactor, actor, target, text)
         return unless /\[\[/ =~ text
-        target = actor if target == @irc.me
-        return if @config.channel[target, 'nowiki'] == '1'
+        target = actor if target == irc.me
+        return if config.channel[target, 'nowiki'] == '1'
         
-        wiki = @config.channel[target, 'default_wiki'] || 'w'
-        lang = @config.channel[target, 'default_lang'] || 'en'
+        wiki = config.channel[target, 'default_wiki'] || 'w'
+        lang = config.channel[target, 'default_lang'] || 'en'
         
         text.scan(/\[\[(.*?)\]\]/) do |title,|
           if url = expand(title, wiki, lang)
-            @irc.msg target, url
+            irc.msg target, url
           end
         end
       end

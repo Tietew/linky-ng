@@ -21,12 +21,6 @@ module Linky
              :usage => [ 'SET URLEXPAND <hostname>',
                          'UNSET URLEXPAND <hostname>' ]
       
-      def initialize(bot)
-        super
-        @config = @bot.config
-        @cache = @bot.cache
-      end
-      
       def add_handlers
         irc.prepend_handler :incoming_msg, wrap_method(:on_msg)
       end
@@ -35,25 +29,25 @@ module Linky
       
       def set_urlexpand(target, hostname)
         hostname.downcase!
-        @config.urlexpand[hostname] = 'redirect'
-        @irc.msg target, "SET URLEXPAND #{hostname} = redirect"
+        config.urlexpand[hostname] = 'redirect'
+        irc.msg target, "SET URLEXPAND #{hostname} = redirect"
       end
       
       def unset_urlexpand(target, hostname)
         hostname.downcase!
-        @config.urlexpand.delete(hostname)
-        @irc.msg target, "SET URLEXPAND #{hostname}"
+        config.urlexpand.delete(hostname)
+        irc.msg target, "SET URLEXPAND #{hostname}"
       end
       
       def on_msg(fullactor, actor, target, text)
         dupe = {}
-        target = actor if target == @irc.me
+        target = actor if target == irc.me
         
         text.scan(%r{h?ttp?://(.*?)/([\w+\/\-\.\:]+)}) do |host, path|
           host.downcase!
           key = "#{host}/#{path}"
           unless dupe[key]
-            if @config.urlexpand[host]
+            if config.urlexpand[host]
               Thread.new(target, host, path, &method(:expand))
             end
             dupe[key] = 1
@@ -63,11 +57,11 @@ module Linky
       
       def expand(target, host, path)
         key = "#{host}/#{path}"
-        url = @cache.fetch(:urlexpand, key) do
+        url = cache.fetch(:urlexpand, key) do
           resp = Net::HTTP.start(host) { |http| http.request_get("/#{path}") }
           resp.code == '301' || resp.code == '302' ? resp['Location'] : 'Not Found'
         end
-        @irc.msg target, "#{host} (#{path}): #{url}"
+        irc.msg target, "#{host} (#{path}): #{url}"
       end
     end
   end

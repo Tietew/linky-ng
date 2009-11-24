@@ -8,14 +8,13 @@ module Linky
     class Settings < Base
       def initialize(bot)
         super
-        @config = bot.config
         @setting = YAML.load(File.read(DATADIR + '/setting.yml'))
       end
       
       def command_set(actor, target, args)
         args = Shellwords.shellwords(args)
         unless name = args.shift
-          @irc.msg target, "usage: SET <name> [args...]"
+          irc.msg target, "usage: SET <name> [args...]"
           return
         end
         name.downcase!
@@ -24,32 +23,32 @@ module Linky
         if set = @setting[name]
           case args.size
           when 0
-            value = @config.channel[target, name]
+            value = config.channel[target, name]
           when 1
             value = Config::Converter::ToSQL.send(set['value'], args[0].strip)
-            @config.channel[target, name] = value
+            config.channel[target, name] = value
           else
-            @irc.msg target, "usage: #{set['usage']}"
+            irc.msg target, "usage: #{set['usage']}"
             return
           end
-          @irc.msg target, "SET #{name.upcase} = #{Config::Converter::FromSQL.send(set['value'], value)}"
+          irc.msg target, "SET #{name.upcase} = #{Config::Converter::FromSQL.send(set['value'], value)}"
           return
         end
         
         # extension setting
         if set = Config.config(name)
           return unless args = checkargs(target, name, set, args, :set)
-          @bot.extensions[set[:klass]].send("set_#{name}", target, *args)
+          bot.extensions[set[:klass]].send("set_#{name}", target, *args)
           return
         end
         
-        @irc.msg target, "ERROR: #{name.upcase}: Unknown setting name."
+        irc.msg target, "ERROR: #{name.upcase}: Unknown setting name."
       end
       
       def command_unset(user, target, args)
         args = Shellwords.shellwords(args)
         unless name = args.shift
-          @irc.msg target, "usage: UNSET <name> [args...]"
+          irc.msg target, "usage: UNSET <name> [args...]"
           return
         end
         name.downcase!
@@ -57,22 +56,22 @@ module Linky
         # channel setting
         if set = @setting[name]
           unless args.empty?
-            @irc.msg target, "usage: UNSET #{name.upcase}"
+            irc.msg target, "usage: UNSET #{name.upcase}"
             return
           end
-          @config.channel.delete(target, name)
-          @irc.msg target, "UNSET #{name.upcase}"
+          config.channel.delete(target, name)
+          irc.msg target, "UNSET #{name.upcase}"
           return
         end
         
         # extension setting
         if set = Config.config(name)
           return unless args = checkargs(target, name, set, args, :unset)
-          @bot.extensions[set[:klass]].send("unset_#{name}", target, *args)
+          bot.extensions[set[:klass]].send("unset_#{name}", target, *args)
           return
         end
         
-        @irc.msg target, "ERROR: #{name.upcase}: Unknown setting name."
+        irc.msg target, "ERROR: #{name.upcase}: Unknown setting name."
       end
       
       def checkargs(target, name, set, args, mode)
@@ -89,7 +88,7 @@ module Linky
           
           unless arg = args.shift
             break if optional
-            @irc.msg target, "usage: #{set[:usage][mode == :set ? 0 : 1]}"
+            irc.msg target, "usage: #{set[:usage][mode == :set ? 0 : 1]}"
             return
           end
           
@@ -110,7 +109,7 @@ module Linky
           end
           unless valid
             mesg = set[:invalid] || "Invalid arguments for SET #{name.upcase}"
-            @irc.msg target, "ERROR: #{mesg}"
+            irc.msg target, "ERROR: #{mesg}"
             return
           end
           actargs << arg
