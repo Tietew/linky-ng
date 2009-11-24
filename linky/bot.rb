@@ -14,20 +14,17 @@ module Linky
     def initialize(options)
       @options = options.dup
       
+      extensions = Array(@options[:extensions] || '*').flatten
+      Dir["linky/extensions/**/*.rb"].each do |f|
+        klassname = f.camelize.sub(/^Linky::Extensions::/, '')
+        if extensions.find { |matcher| !(/^\!/ =~ matcher) != !File.fnmatch(matcher.sub(/^\!/, ''), klassname) }
+          require f
+        end
+      end
+      
       @config = Config.new(@options[:database])
       @cache = Cache.new(@options[:cache])
       nickname = @options[:nickname]
-      
-      extensions = Array(@options[:extensions] || '*').flatten
-      Dir["linky/extensions/*.rb"].each do |f|
-        klassname = File.basename(f).camelize
-        extensions.each do |matcher|
-          if File.fnmatch(matcher, klassname)
-            require f.sub(/\.rb$/, '')
-            break
-          end
-        end
-      end
       
       @options[:username] ||= BOTNAME
       @options[:realname] ||= BOTNAME
@@ -58,16 +55,15 @@ module Linky
     
     def add_custom_handlers
       @extensions = Extensions::Base.create_extensions(self)
-      @commands = (@extensions.values + [self]).inject({}) { |hash, x|
-                    report "Extension #{x.class}"
-                    x.methods.each do |method|
-                      if /^command_/ =~ method
-                        hash[command = $'] = x  #'
-                        report "COMMAND #{command}"
-                      end
-                    end
-                    hash
-                  }
+      @commands = (@extensions.values + [self]).inject({}) do |hash, x|
+        x.methods.each do |method|
+          if /^command_/ =~ method
+            hash[command = $'] = x  #'
+            $stderr.puts "Registered Command: #{command} for #{x.class.name.demodulize}"
+          end
+        end
+        hash
+      end
       
       @irc.prepend_handler :incoming_welcome, wrap_method(:on_welcome)
       @irc.prepend_handler :incoming_invite,  wrap_method(:on_invite)

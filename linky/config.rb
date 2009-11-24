@@ -13,11 +13,13 @@ module Linky
     
     @@config_proxies = []
     def self.add_config_proxy(tablename, primkeys, value)
+      $stderr.puts "Registered Config Pxory: #{tablename}"
       @@config_proxies << [ tablename, primkeys, value ]
     end
     
     @@configs = {}
     def self.add_config_set(klass, name, options)
+      $stderr.puts "Registered SET: #{name}"
       @@configs[name] = options.update(:klass => klass)
     end
     def self.config(name)
