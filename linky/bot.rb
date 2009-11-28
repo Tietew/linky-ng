@@ -48,7 +48,7 @@ module Linky
     
     def connect_socket
       @mutex.synchronize do
-        @extensions.each(&:shutdown) if @extensions
+        @extensions.each { |klass, x| x.shutdown } if @extensions
         @extensions = nil
         @extthreads.each(&:kill) if @extthreads
         @extthreads = nil
@@ -67,8 +67,8 @@ module Linky
     def setup_traps
       trap(:INT)  { @irc.quit "SIGINT received.";  sleep 1; exit }
       trap(:TERM) { @irc.quit "SIGTERM received."; sleep 1; exit }
-      trap(:HUP)  { @irc.quit "SIGHUP received.";  sleep 1; exit 1 }
-      trap(:QUIT) { @irc.quit "SIGQUIT received."; sleep 1; exit 1 }
+      trap(:HUP)  { @irc.quit "SIGHUP received.";  sleep 1; exit 193 }
+      trap(:QUIT) { @irc.quit "SIGQUIT received."; sleep 1; exit 193 }
     end
     
     def add_custom_handlers

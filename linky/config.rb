@@ -13,7 +13,7 @@ module Linky
     
     @@config_proxies = []
     def self.add_config_proxy(tablename, primkeys, value)
-      $stderr.puts "Registered Config Pxory: #{tablename}"
+      $stderr.puts "Registered Config Proxy: #{tablename}"
       @@config_proxies << [ tablename, primkeys, value ]
     end
     

@@ -7,35 +7,38 @@ module Linky
       def wrap_method(name)
         method = method(name)
         lambda do |*args|
-          # irc.report "#{self.class}\##{name}: #{args.inspect}"
-          begin
+          bugtrap(method.arity >= 3 ? args[2] : nil, "#{self.class}\##{name}") do
             method.call(*args)
-          rescue SystemExit
-            raise
-          rescue Exception => e
-            irc.report "--- Exception #{e.class} during #{self.class}\##{name}"
-            irc.report e.message
-            e.backtrace.each { |t| irc.report "\tfrom #{t}" }
-            
-            if method.arity >= 3
-              begin
-                mesg = e.message.to_s.strip.gsub(/\n/, '/')
-                if mesg.empty?
-                  mesg = (e.class == RuntimeError) ? "unhandled exception" : e.class.to_s
-                end
-                mesg = "\x02[Bug]\x02 \x0312#{e.class}\x03: #{mesg}"
-                
-                irc.msg args[2], mesg
-              rescue SystemExit
-                raise
-              rescue Exception => e
-                irc.report "--- !!! Nested exception #{e.class}"
-                irc.report e.message
-                e.backtrace.each { |t| irc.report "\tfrom #{t}" }
-              end
-            end
           end
         end
+      end
+      
+      def bugcheck(e, target = nil, context = nil)
+        $stderr.puts "--- Exception #{e.class}#{" during #{context}" if context}"
+        $stderr.puts e.message
+        e.backtrace.each { |t| $stderr.puts "\tfrom #{t}" }
+        
+        if target
+          mesg = e.message.to_s.strip.gsub(/\n/, '/')
+          mesg = (e.class == RuntimeError) ? "unhandled exception" : e.class.to_s if mesg.empty?
+          mesg = "\x02[Bug]\x02 \x0312#{e.class}\x03: #{mesg}"
+          irc.msg target, mesg
+        end
+      rescue SystemExit
+        raise
+      rescue Exception => e
+        $stderr.puts "--- !!! Nested exception #{e.class}"
+        $stderr.puts e.message
+        e.backtrace.each { |t| $stderr.puts "\tfrom #{t}" }
+      end
+      
+      def bugtrap(target = nil, context = nil)
+        mesg = catch(:error) { return yield }
+        irc.notice target, "ERROR: #{mesg}" if target && mesg
+      rescue SystemExit
+        raise
+      rescue Exception => e
+        bugcheck(e, target, context)
       end
     end
     
