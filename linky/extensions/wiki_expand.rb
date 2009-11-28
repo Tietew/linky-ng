@@ -1,6 +1,8 @@
 # -*- coding: UTF-8 -*-
 #
 require 'linky/settings'
+require 'uri'
+require 'open-uri'
 
 module Linky
   module Extensions
@@ -35,17 +37,17 @@ module Linky
       config_proxy :shortcut, [ :wiki, :prefix ], :namespace
       
       config :interwiki,
-             :args => [ /^\w+$/, :opt, Array ],
+             :args => [ /^[\w\-]+$/, :opt, Array ],
              :invalid => "interwiki name can't contain symbols.",
              :usage => [ 'SET INTERWIKI <wiki> [url] [optname=optvalue ...]',
                          'UNSET INTERWIKI <wiki>' ]
       config :interlang,
-             :args => [ /^\w+$/, :opt ], # :opt is hack for unset
+             :args => [ /^[\w\-]+$/, :opt, /^[\w\-]+$/ ],
              :invalid => "interlang name can't contain symbols.",
-             :usage => [ 'SET INTERLANG <lang>',
+             :usage => [ 'SET INTERLANG <lang> [url]',
                          'UNSET INTERLANG <lang>' ]
       config :shortcut,
-             :args => [ /^(\w+(:\w+)?|\*)$/, /^\w+$/, :opt, String ],
+             :args => [ /^([\w\-]+(:[\w\-]+)?|\*)$/, /^[\w\-]+$/, :opt, String ],
              :invalid => "interwiki name and/or prefix can't contain symbols.",
              :usage => [ 'SET SHORTCUT <wiki / wiki:lang / lang / *> <prefix> [namespace]',
                          'UNSET SHORTCUT <wiki / wiki:lang / lang / *> <prefix>' ]
@@ -54,6 +56,54 @@ module Linky
       
       def add_handlers
         irc.prepend_handler :incoming_msg, wrap_method(:on_msg)
+      end
+      
+      def command_sizeof(actor, target, args)
+        if args.sub!(/\s+(\d+)$/, '')
+          oldid = $1.to_i
+        end
+        title = args.strip
+        
+        wiki, lang = get_defaults(target)
+        url, title, wiki, lang = expand(title, wiki, lang)
+        
+        redirect = 0
+        urlhash = {}
+        check_redir = proc do |uri|
+          throw :error, "(#{uri.host}) \x0303#{title}\x03: Too many redirects" if (redirect += 1) >= 10
+          throw :error, "(#{uri.host}) \x0303#{title}\x03: Redirection loop" if urlhash[uri.to_s]
+          urlhash[uri.to_s] = 1
+        end
+        
+        Thread.new do
+          bugtrap(target, "sizeof") do
+            uri = URI.parse(url)
+            uri.query ||= ''
+            uri.query.sub!(/(^|&)action=[^&]*/, '')
+            uri.query.sub!(/(^|&)redirect=[^&]*/, '')
+            uri.query = "#{uri.query}&action=raw&redirect=no".sub(/^&/, '')
+            uri.query << "&oldid=#{oldid}" if oldid
+            resp = Timeout.timeout(10) {
+              $stderr.puts "[sizeof] query #{uri}"
+              Net::HTTP.start(uri.host, uri.port) { |http| http.request_get(uri.request_uri) }
+            }
+            case resp.code
+            when '301', '302', '303', '307'
+              check_redir.call(uri)
+              url = resp['Location']
+              retry
+            when '200'
+              if /^#REDIRECT.*\[\[(.*?)(\|.*?)?\]\]/i =~ resp.body
+                check_redir.call(uri)
+                url, title, wiki, lang = expand($1, wiki, lang)
+                retry
+              end
+              irc.msg target, "(#{uri.host}) \x0303#{title}\x03: #{Utils.num3(resp.body.size)} bytes"
+            else
+              irc.msg target, "(#{uri.host}) \x0303#{title}\x03: #{resp.code} \x02#{resp.message}\x02"
+            end
+          end
+        end
       end
       
       private
@@ -138,16 +188,20 @@ module Linky
         irc.msg target, "UNSET INTERWIKI #{wiki}"
       end
       
-      def set_interlang(target, lang)
+      def set_interlang(target, lang, url = nil)
         lang.downcase!
-        config.interlang[lang] = lang
-        irc.msg target, "SET #{name} #{lang}"
+        if url
+          config.interlang[lang] = url
+        else
+          url = config.interlang[lang]
+        end
+        irc.msg target, "SET INTERLANG #{lang} = #{url}"
       end
       
       def unset_interlang(target, lang)
         lang.downcase!
         config.interlang.delete(lang)
-        irc.msg target, "UNSET #{name} #{lang}"
+        irc.msg target, "UNSET INTERLANG #{lang}"
       end
       
       def set_shortcut(target, wiki, prefix, namespace = nil)
@@ -164,6 +218,12 @@ module Linky
         wiki.downcase!
         config.shortcut.delete(wiki, prefix)
         irc.msg target, "UNSET SHORTCUT #{wiki} #{prefix}"
+      end
+      
+      def get_defaults(target)
+        wiki = config.channel[target, 'default_wiki'] || 'w'
+        lang = config.channel[target, 'default_lang'] || 'en'
+        [ wiki, lang ]
       end
       
       def expand(title, wiki, lang)
@@ -217,19 +277,20 @@ module Linky
         
         # space
         if space = config.interwiki_options[wiki, 'space']
-          title = Utils.escape(title).gsub(/%20/, space)
+          etitle = Utils.escape(title).gsub(/%20/, space)
         else
           title.gsub!(/\A_+|_+\z/, '')
           title.tr!(' ', '_')
           fragment.tr!(' ', '_') if fragment
-          title = Utils.escape(title)
+          etitle = Utils.escape(title)
         end
         
         # make url
         url.gsub!(/\{lang\}/, lang)
-        url.gsub!(/\{title\}/, title)
+        url.gsub!(/\{title\}/, etitle)
         url << '#' << Utils.escape(fragment, '.') if fragment
-        url
+        
+        [ url, title, wiki, lang ]
       end
       
       def on_msg(fullactor, actor, target, text)
@@ -237,13 +298,10 @@ module Linky
         target = actor if target == irc.me
         return if config.channel[target, 'nowiki'] == '1'
         
-        wiki = config.channel[target, 'default_wiki'] || 'w'
-        lang = config.channel[target, 'default_lang'] || 'en'
-        
+        wiki, lang = get_defaults(target)
         text.scan(/\[\[(.*?)\]\]/) do |title,|
-          if url = expand(title, wiki, lang)
-            irc.msg target, url
-          end
+          url, = expand(title, wiki, lang)
+          irc.msg target, url if url
         end
       end
     end

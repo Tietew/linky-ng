@@ -115,5 +115,12 @@ module Linky
       }
       result
     end
+    
+    def num3(number)
+      f = number.to_f
+      i = number.to_i
+      us = sprintf("%.2f", f)[/\.\d+$/] if f != i
+      i.to_s.reverse.scan(/.{1,3}/).join(',').reverse + us.to_s
+    end
   end
 end
